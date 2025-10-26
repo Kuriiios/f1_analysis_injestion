@@ -1,0 +1,9 @@
+fastf1
+fastapi
+uvicorn
+pandas
+numpy
+requests
+re
+concurrent.futures
+sqlalchemy
