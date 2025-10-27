@@ -60,15 +60,14 @@ def get_event_round(year):
     event_round["IsSprintEvent"] = event_round["IsSprintEvent"].fillna(0).astype(bool)
     event_round["Year"] = year
     event_round = event_round.drop(labels='EventFormat', axis=1)
-    print(event_round.columns)
     event_round = event_round.rename(columns={
                                 "RoundNumber" : "roundNumber",
                                 "Country": "country",
                                 "Location": "location",
                                 "EventName": "eventName",
-                                    "EventDate": "eventDate",
-                                    "IsSprintEvent": "isSprintEvent",
-                                    "Year": "year"})
+                                "EventDate": "eventDate",
+                                "IsSprintEvent": "isSprintEvent",
+                                "Year": "year"})
         
     tyres = {}
     session = requests.Session()
