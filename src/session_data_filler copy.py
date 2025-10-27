@@ -44,6 +44,17 @@ drs_mapper = {
     "On" : 14,
 }
 
+track_status_mapper = {
+    "Unknown": 0,
+    "TrackClear" : 1,
+    "Yellow Flag": 2,
+    "Unknown_2": 3,
+    "Safety Car" : 4,
+    "Red Flag" : 5,
+    "VSC deployed" : 6,
+    "VSC ending" : 7,
+}
+
 engine = sa.create_engine(DATABASE_URL, echo=True)
 metadata = sa.MetaData()
 metadata.reflect(bind=engine)
