@@ -57,6 +57,15 @@ Data ingestion is a two-step process to maintain data integrity and a clear hier
 
         Transforms and inserts the detailed data into all other dependent database tables (e.g., Lap, CarData, Driver, Weather, etc.).
 
+##    Data Structure 
+#### Methode Merise
+##### MCD
+![MDC](images/image.png)
+##### MLD
+![MLD](images/image-1.png)
+##### MPD
+![MPD](images/image-2.png)
+
 ## 📂 Folder Structure
 
 The repository maintains a simple structure, keeping all primary execution logic within the src folder.
