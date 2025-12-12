@@ -54,7 +54,7 @@ class EventRound(Base):
 class SessionName(Base):
     __tablename__ = 'session_name'
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(30), nullable=True, unique=True)
 
     event_session = relationship('EventSession', back_populates='session_name')
