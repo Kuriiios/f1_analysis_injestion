@@ -65,7 +65,7 @@ class Driver(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(100), nullable=True, unique=True)
     number = Column(Integer, nullable=False)
-    abbreviation = Column(String(3), nullable=False)
+    abbreviation = Column(String(3))
     country = Column(String(30))
     hex_code = Column(String(7))
 
