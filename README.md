@@ -57,6 +57,7 @@ Data ingestion is a two-step process to maintain data integrity and a clear hier
 
         Transforms and inserts the detailed data into all other dependent database tables (e.g., Lap, CarData, Driver, Weather, etc.).
 
+<<<<<<< HEAD
 ##    Data Structure 
 #### Methode Merise
 ##### MCD
@@ -66,6 +67,8 @@ Data ingestion is a two-step process to maintain data integrity and a clear hier
 ##### MPD
 ![MPD](images/image-2.png)
 
+=======
+>>>>>>> 878bd40 (added new version of data insertion with sql alchemy)
 ## 📂 Folder Structure
 
 The repository maintains a simple structure, keeping all primary execution logic within the src folder.
