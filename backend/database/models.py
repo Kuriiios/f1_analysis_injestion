@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey, SmallInteger, Text, Interval, Float
 from sqlalchemy.orm import relationship
-from .base import Base
+from .db_init import Base
 
 class Compound(Base):
     __tablename__ = 'compound'
@@ -8,11 +8,11 @@ class Compound(Base):
     id = Column(Integer, primary_key=True)
     hardness = Column(String(2), nullable=False, unique=True)
 
-    round_soft = relationship('Round', back_populates='soft_compound')
+    event_round_soft = relationship('EventRound', back_populates='soft_compound', foreign_keys='EventRound.soft_compound_id')
 
-    round_medium = relationship('Round', back_populates='medium_compound')
+    event_round_medium = relationship('EventRound', back_populates='medium_compound', foreign_keys='EventRound.medium_compound_id')
 
-    round_hard = relationship('Round', back_populates='hard_compound')
+    event_round_hard = relationship('EventRound', back_populates='hard_compound', foreign_keys='EventRound.hard_compound_id')
 
 class Tyre(Base):
     __tablename__ = 'tyre'
@@ -41,13 +41,13 @@ class EventRound(Base):
     is_sprint_event = Column(Boolean, nullable=False)
 
     soft_compound_id = Column(Integer, ForeignKey('compound.id'))
-    soft_compound = relationship('Compound', back_populates='round_soft')
+    soft_compound = relationship('Compound', back_populates='event_round_soft', foreign_keys=[soft_compound_id])
 
     medium_compound_id = Column(Integer, ForeignKey('compound.id'))
-    medium_compound = relationship('Compound', back_populates='round_medium')
+    medium_compound = relationship('Compound', back_populates='event_round_medium', foreign_keys=[medium_compound_id])
 
     hard_compound_id = Column(Integer, ForeignKey('compound.id'))
-    hard_compound = relationship('Compound', back_populates='round_hard')
+    hard_compound = relationship('Compound', back_populates='event_round_hard',foreign_keys=[hard_compound_id])
 
     event_session = relationship('EventSession', back_populates='event_round')
 
@@ -69,7 +69,7 @@ class Driver(Base):
     country = Column(String(30))
     hex_code = Column(String(7))
 
-    dta = relationship('Driver', back_populates='driver')
+    dta = relationship('Dta', back_populates='driver')
 
 class Team(Base):
     __tablename__ = 'team'
@@ -80,7 +80,7 @@ class Team(Base):
     country = Column(String(30))
     hex_code = Column(String(7))
 
-    dta = relationship('Team', back_populates='team')
+    dta = relationship('Dta', back_populates='team')
 
 class EventSession(Base):
     __tablename__ = 'event_session'
@@ -94,13 +94,13 @@ class EventSession(Base):
     session_name_id = Column(Integer, ForeignKey('session_name.id'))
     session_name = relationship('SessionName', back_populates='event_session')
     
-    weather = relationship('Weather', back_populates='event_sesion')
+    weather = relationship('Weather', back_populates='event_session')
     
-    race_control = relationship('RaceControl', back_populates='event_sesion')
+    race_control = relationship('RaceControl', back_populates='event_session')
     
-    team_radio = relationship('TeamRadio', back_populates='event_sesion')
+    team_radio = relationship('TeamRadio', back_populates='event_session')
 
-    dta = relationship('EventSession', back_populates='event_session')
+    dta = relationship('Dta', back_populates='event_session')
 
 class Weather(Base):
     __tablename__ = 'weather'

@@ -74,11 +74,11 @@ Data ingestion is a two-step process to maintain data integrity and a clear hier
 ## Data Structure
 #### Merise Methose
 ###### MCD
-![MCD](image.png)
+![MCD](img/image.png)
 ###### MLD
-![MLD](image-1.png)
+![MLD](img/image-1.png)
 ###### MPD
-![MPD](image-2.png)
+![MPD](img/image-2.png)
 
 >>>>>>> 5106956 (added screenshot to readme)
 ## 📂 Folder Structure
@@ -90,15 +90,36 @@ Plaintext
 f1_analysis_injestion/
 │
 ├── backend/
+│   ├── data
+│   │   ├── __init__.py
+│   │   └── third_party_data.py
+│   │
 │   ├── database
 │   │   ├── __init__.py
-│   │   ├── base.py
+│   │   ├── db_init.py
 │   │   ├── models.py
 │   │   └── f1_analysis.db
+│   │
+│   ├── modules
+│   │   ├── __init__.py
+│   │   ├── db_tools.py
+│   │   └── tyres_info.db   (May be useless in the future)
+│   │
+│   ├── logs
+│   │   ├── event_round.log
+│   │   ├── event_session.log
+│   │   ├── lookup.log
+│   │   └── main.log
+│   │
+│   ├── event_round.py
+│   ├── event_session.py
+│   ├── lookup.py
 │   └── main.py
 │
 ├── DEV/
-│   └── dev.ipynb
+│   ├── dev.ipynb
+│   ├── constant.ipynb
+│   └── variable.ipynb
 │
 ├── src/
 │   ├── season_service.py            # Injects Season/Round metadata
