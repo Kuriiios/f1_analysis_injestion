@@ -1,7 +1,8 @@
+from sqlalchemy.dialects.sqlite import insert
 from database.db_init import ENGINE
 from sqlalchemy.orm import sessionmaker
-from database.models import EventSession
-from modules.db_tools import get_data_for_event_session
+from database.models import EventSession, Weather
+from modules.db_tools import get_data_for_event_session, insert_for_weather
 import fastf1
 import os
 from dotenv import load_dotenv
@@ -27,3 +28,19 @@ with Session() as session:
 
         except Exception as e:
             print(f"Error loading current_session {i}: {e}. Skipping.")
+
+        laps = session_data.laps
+
+        try:
+            weather_records = insert_for_weather(laps, session)
+            stmt_weather = insert(Weather).values(weather_records)
+            session.execute(stmt_weather)
+            logger.success('Weather ensured in database.')
+
+            session.commit()
+            logger.success('Weather ensured commited to database.')
+
+        except Exception as e:
+            print(f"Error loading current_session {i}: {e}. Skipping.")
+
+

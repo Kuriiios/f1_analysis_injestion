@@ -1,5 +1,5 @@
 from sqlalchemy import select
-from database.models import EventRound, SessionName
+from database.models import EventRound, SessionName, EventSession
 import fastf1
 import fastf1.plotting
 import os
@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from sqlalchemy.orm import sessionmaker
 from database.models import Compound
 from database.db_init import ENGINE
+from loguru import logger
 load_dotenv()
 
 def get_data_driver_and_team_records(drivers_data_input, teams_data_input):
@@ -42,6 +43,30 @@ def get_data_driver_and_team_records(drivers_data_input, teams_data_input):
 
         return drivers_records, teams_records
 
+def insert_for_weather(laps, session):
+    weather_df = laps.get_weather_data().dropna().drop_duplicates()
+    weather_df = weather_df.rename(columns={'Time':'time', 'AirTemp': 'air_temp', 'Humidity': 'humidity', 'Pressure': 'pressure', 'Rainfall':'is_rainfall', 'TrackTemp':'track_temp',
+        'WindDirection':'wind_direction', 'WindSpeed':'wind_speed'})
+    event_session_id = get_data_for_weather(session, int(os.getenv("SEASON")), int(os.getenv("ROUND")), laps.session.name)
+    weather_df['event_session_id'] = event_session_id
+    print(event_session_id)
+    if event_session_id is None:
+        logger.error("EventSession ID not found for bulk insert.")
+        return []
+    weather_records = weather_df.to_dict('records')
+    return weather_records
+
+def get_data_for_weather(session, year, round_number, session_name):   
+    event_session = (
+        session.query(EventSession)
+        .join(EventSession.event_round)
+        .join(EventSession.session_name)
+        .filter(EventRound.year == year)
+        .filter(EventRound.round_number == round_number)
+        .filter(SessionName.name == session_name)
+        .one_or_none()
+    )
+    return event_session.id
 
 def get_data_for_event_session(session, i):
     event = fastf1.get_event(int(os.getenv("SEASON")), int(os.getenv("ROUND")))

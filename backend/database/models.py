@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey, SmallInteger, Text, Interval, Float
+from sqlalchemy import Column, Integer, String, Date, Boolean, DateTime, ForeignKey, SmallInteger, Text, Interval, Float
 from sqlalchemy.orm import relationship
 from .db_init import Base
 
@@ -108,7 +108,7 @@ class Weather(Base):
     id = Column(Integer, primary_key=True)
     time = Column(Interval, nullable=False)
     air_temp = Column(SmallInteger)
-    humdity = Column(SmallInteger)
+    humidity = Column(SmallInteger)
     pressure = Column(SmallInteger)
     track_temp = Column(SmallInteger)
     wind_speed = Column(SmallInteger)
