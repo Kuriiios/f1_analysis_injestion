@@ -1,10 +1,11 @@
 from sqlalchemy import select
-from database.models import EventRound, SessionName, EventSession
+from database.models import EventRound, SessionName, EventSession, Driver, Team, Tyre, Lap
 import fastf1
 import fastf1.plotting
 import os
 from dotenv import load_dotenv
 import pandas as pd
+import numpy as np
 import re
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -47,7 +48,7 @@ def insert_for_weather(laps, session):
     weather_df = laps.get_weather_data().dropna().drop_duplicates()
     weather_df = weather_df.rename(columns={'Time':'time', 'AirTemp': 'air_temp', 'Humidity': 'humidity', 'Pressure': 'pressure', 'Rainfall':'is_rainfall', 'TrackTemp':'track_temp',
         'WindDirection':'wind_direction', 'WindSpeed':'wind_speed'})
-    event_session_id = get_data_for_weather(session, int(os.getenv("SEASON")), int(os.getenv("ROUND")), laps.session.name)
+    event_session_id = get_event_session_id(session, int(os.getenv("SEASON")), int(os.getenv("ROUND")), laps.session.name)
     weather_df['event_session_id'] = event_session_id
     print(event_session_id)
     if event_session_id is None:
@@ -56,7 +57,7 @@ def insert_for_weather(laps, session):
     weather_records = weather_df.to_dict('records')
     return weather_records
 
-def get_data_for_weather(session, year, round_number, session_name):   
+def get_event_session_id(session, year, round_number, session_name):   
     event_session = (
         session.query(EventSession)
         .join(EventSession.event_round)
@@ -178,3 +179,177 @@ def fetch_tyres(year, schedule):
     )
 
     return df.applymap(get_compound)
+
+def get_race_control_messages(session, session_data):
+    race_control_messages = session_data.race_control_messages[['Time', 'Message']]
+    race_control_messages = race_control_messages.rename(columns={"Time":"date", "Message":"message"})
+    event_session_id = get_event_session_id(session, int(os.getenv("SEASON")), int(os.getenv("ROUND")), session_data.session_info['Name'])
+    race_control_messages['event_session_id'] = event_session_id
+    race_control_messages_records = race_control_messages.to_dict('records')
+    return race_control_messages_records
+
+def get_lap_data(laps, session):
+    laps = laps.replace({pd.NaT: None, np.nan: None}).copy()
+    laps = laps[laps['LapStartDate'].notna()].copy()
+
+    event_session_id = get_event_session_id(session, int(os.getenv("SEASON")), int(os.getenv("ROUND")), laps.session.name)
+    driver_lookup = { (int(d.number), str(d.abbreviation)): d.id for d in session.query(Driver).all() }
+    team_lookup = { t.name: t.id for t in session.query(Team).all() }
+    tyre_lookup = { ty.name.lower(): ty.id for ty in session.query(Tyre).all() }
+
+    def find_driver(row):
+        try:
+            num = int(float(row['DriverNumber'])) 
+            abbr = str(row['Driver'])
+            return driver_lookup.get((num, abbr))
+        except (ValueError, TypeError):
+            return None
+
+    timedelta_ms_cols = ['LapTime','PitOutTime','PitInTime','Sector1Time','Sector2Time','Sector3Time']
+    for col in timedelta_ms_cols:
+        laps[col + '_ms'] = laps[col].apply(lambda x: int(x.total_seconds()*1000) if pd.notna(x) else None)
+
+    interval_cols = ['Sector1SessionTime', 'Sector2SessionTime', 'Sector3SessionTime', 'LapStartTime']
+    for col in interval_cols:
+        laps[col] = pd.to_timedelta(laps[col])
+        laps[col] = laps[col].apply(lambda x: x.to_pytimedelta() if pd.notna(x) else None)
+    
+    bool_cols = ['IsPersonalBest', 'Deleted', 'IsAccurate']
+    for col in bool_cols:
+        laps[col] = laps[col].apply(lambda x: bool(x) if pd.notna(x) else False)
+
+    laps = laps.replace({pd.NaT: None, np.nan: None}).copy()
+    int_cols = ['LapTime_ms', 'PitOutTime_ms', 'PitInTime_ms', 'Sector1Time_ms', 'Sector2Time_ms', 'Sector3Time_ms', 'LapNumber', 'Position', 'Stint', 'TyreLife', 'SpeedI1', 'SpeedI2', 'SpeedFL', 'SpeedST', 'TrackStatus']
+    for col in int_cols:
+        laps[col] = laps[col].apply(lambda x: int(x) if pd.notna(x) else 0)
+
+    laps['LapStartDate'] = pd.to_datetime(laps['LapStartDate']).dt.date
+    laps['Compound'] = laps['Compound'].astype(str).str.lower()
+    laps['event_session_id'] = event_session_id
+    laps['driver_id'] = laps.apply(find_driver, axis=1)
+    laps['team_id'] = laps['Team'].map(team_lookup)
+    laps['tyre_id'] = laps['Compound'].map(tyre_lookup)
+
+    mapping = {
+        'LapTime_ms': 'laptime_ms',
+        'LapNumber': 'lap_number',
+        'Sector1Time_ms': 'sector_1_ms',
+        'Sector2Time_ms': 'sector_2_ms',
+        'Sector3Time_ms': 'sector_3_ms',
+        'Stint': 'stint',
+        'SpeedI1': 'speed_i1',
+        'SpeedI2': 'speed_i2',
+        'SpeedFL': 'speed_fl',
+        'SpeedST': 'speed_st',
+        'TyreLife': 'tyre_life',
+        'Position': 'position',
+        'Sector1SessionTime': 'sector_1_time',
+        'Sector2SessionTime': 'sector_2_time',
+        'Sector3SessionTime': 'sector_3_time',
+        'PitInTime_ms': 'pit_in_time_ms',
+        'PitOutTime_ms': 'pit_out_time_ms',
+        'LapStartTime': 'start_time',
+        'LapStartDate': 'start_date',
+        'IsPersonalBest': 'is_personal_best',
+        'Deleted': 'is_deleted',
+        'IsAccurate': 'is_accurate',
+        'TrackStatus': 'track_status',
+        'event_session_id': 'event_session_id',
+        'driver_id': 'driver_id',
+        'team_id': 'team_id',
+        'tyre_id': 'tyre_id'
+    }
+
+    final_laps = laps.rename(columns=mapping)
+    
+    return final_laps[list(mapping.values())].to_dict(orient='records')
+
+def get_event_session(session, year, round_number, session_name):
+    stmt_event_session = (
+        select(EventSession)
+            .join(EventRound)
+            .join(SessionName)
+            .filter(EventRound.year == year)
+            .filter(EventRound.round_number == round_number)
+            .filter(SessionName.name == session_name)
+    )
+    return session.execute(stmt_event_session).scalars().all()
+
+def get_list_drivers(session, results_event_session):
+    stmt_drivers = (
+        select(Lap)
+            .join(Driver)
+            .join(EventSession)
+            .filter(EventSession.id == results_event_session[0].id)
+    )
+    return session.execute(stmt_drivers).scalars().unique()
+
+def get_lap_per_driver(session, results_event_session, driver):
+    stmt_driver = (
+    select(Lap)
+        .join(Driver)
+        .join(EventSession)
+        .filter(EventSession.id == results_event_session[0].id)
+        .filter(Driver.number == driver)
+    )
+    return session.execute(stmt_driver).scalars().unique()
+
+def format_car_data(telemetry):
+    df = telemetry.copy()
+    
+    try:
+        df = df.add_distance().add_differential_distance().add_relative_distance().add_track_status()
+    except Exception:
+        pass
+
+    df['time_ms'] = (df['Time'].dt.total_seconds() * 1000).astype(int)
+    df['date'] = pd.to_datetime(df['Date']).dt.date
+    
+    df['isBraking'] = df['Brake'].astype(bool)
+    df['rpm'] = df['RPM'].fillna(0).astype(int)
+    df['speed'] = df['Speed'].fillna(0).astype(int)
+    df['throttle'] = df['Throttle'].fillna(0).astype(int)
+    df['track_status'] = df['TrackStatus'].fillna(0).astype(int)
+    
+    mapping = {
+        'rpm': 'rpm', 'speed': 'speed', 'nGear': 'gear', 'throttle': 'throttle',
+        'isBraking': 'isBraking', 'time_ms': 'time_ms', 'Distance': 'distance',
+        'DifferentialDistance': 'differential_distance', 'RelativeDistance': 'relative_distance',
+        'TrackStatus': 'track_status'
+    }
+    
+    existing_cols = [c for c in mapping.keys() if c in df.columns]
+    return df[existing_cols].rename(columns=mapping)
+
+def format_pos_data(telemetry):
+    df = telemetry.copy()
+    
+    try:
+        df = df.add_track_status()
+    except Exception:
+        pass
+
+    df['Time'] = df['Time'].apply(lambda x: int(x.total_seconds()*1000) if pd.notna(x) else None)
+    df['Date'] = pd.to_datetime(df['Date']).dt.date
+
+    df['SessionTime'] = pd.to_timedelta(df['SessionTime'])
+    df['SessionTime'] = df['SessionTime'].apply(lambda x: x.to_pytimedelta() if pd.notna(x) else None)
+
+    df = df.replace({pd.NaT: None, np.nan: None}).copy()
+    int_cols = ['X', 'Y', 'Z', 'Time', 'TrackStatus']
+    for col in int_cols:
+        df[col] = df[col].apply(lambda x: int(x) if pd.notna(x) else 0)
+
+    mapping = {
+            'X': 'x',
+            'Y': 'y',
+            'Z': 'z',
+            'Time': 'time_ms',
+            'SessionTime': 'session_time',
+            'Date': 'date',
+            'Status': 'is_on_track',
+            'TrackStatus': 'track_status'
+            }
+
+    existing_cols = [c for c in mapping.keys() if c in df.columns]
+    return df[existing_cols].rename(columns=mapping)

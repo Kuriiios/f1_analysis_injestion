@@ -19,7 +19,6 @@ with Session() as session:
         session.add_all(events)
         session.commit()
 
-        session.commit()
         logger.success("Event Rounds data committed successfully.")
     except Exception as e:
         session.rollback()

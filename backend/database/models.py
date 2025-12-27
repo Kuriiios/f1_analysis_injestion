@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, Boolean, DateTime, ForeignKey, SmallInteger, Text, Interval, Float
+from sqlalchemy import Column, Integer, String, Date, Boolean, DateTime, ForeignKey, SmallInteger, Text, Interval, Float, UniqueConstraint
 from sqlalchemy.orm import relationship
 from .db_init import Base
 
@@ -69,7 +69,7 @@ class Driver(Base):
     country = Column(String(30))
     hex_code = Column(String(7))
 
-    dta = relationship('Dta', back_populates='driver')
+    lap = relationship('Lap', back_populates='driver')
 
 class Team(Base):
     __tablename__ = 'team'
@@ -80,7 +80,7 @@ class Team(Base):
     country = Column(String(30))
     hex_code = Column(String(7))
 
-    dta = relationship('Dta', back_populates='team')
+    lap = relationship('Lap', back_populates='team')
 
 class EventSession(Base):
     __tablename__ = 'event_session'
@@ -100,7 +100,8 @@ class EventSession(Base):
     
     team_radio = relationship('TeamRadio', back_populates='event_session')
 
-    dta = relationship('Dta', back_populates='event_session')
+    lap = relationship('Lap', back_populates='event_session')
+
 
 class Weather(Base):
     __tablename__ = 'weather'
@@ -122,8 +123,9 @@ class RaceControl(Base):
     __tablename__ = 'race_control'
 
     id = Column(Integer, primary_key=True)
-    message = Column(Text, nullable=True, unique=True)
-    date = Column(Date, nullable=True, unique=True)
+    message = Column(Text, nullable=True)
+    date = Column(Date, nullable=True)
+    UniqueConstraint ('message', 'date', name='message_date_uc')
 
     event_session_id = Column(Integer, ForeignKey('event_session.id'))
     event_session = relationship('EventSession', back_populates='race_control')
@@ -139,26 +141,6 @@ class TeamRadio(Base):
     event_session_id = Column(Integer, ForeignKey('event_session.id'))
     event_session = relationship('EventSession', back_populates='team_radio')
 
-class Dta(Base):
-    __tablename__ = 'dta'
-
-    id = Column(Integer, primary_key=True)
-
-    driver_id = Column(Integer, ForeignKey('driver.id'))
-    driver = relationship('Driver', back_populates='dta')
-
-    team_id = Column(Integer, ForeignKey('team.id'))
-    team = relationship('Team', back_populates='dta')
-
-    event_session_id = Column(Integer, ForeignKey('event_session.id'))
-    event_session = relationship('EventSession', back_populates='dta')
-
-    lap = relationship('Lap', back_populates='dta')
-    
-    pos_data = relationship('PosData', back_populates='dta')
-    
-    car_data = relationship('CarData', back_populates='dta')
-
 class Drs(Base):
     __tablename__ = 'drs'
 
@@ -171,9 +153,9 @@ class Lap(Base):
     id = Column(Integer, primary_key=True)
     laptime_ms = Column(Integer, nullable=False)
     lap_number = Column(SmallInteger)
-    sector_1 = Column(Integer)
-    sector_2 = Column(Integer)
-    sector_3 = Column(Integer)
+    sector_1_ms = Column(Integer)
+    sector_2_ms = Column(Integer)
+    sector_3_ms = Column(Integer)
     stint = Column(SmallInteger)
     speed_i1 = Column(SmallInteger)
     speed_i2 = Column(SmallInteger)
@@ -184,8 +166,8 @@ class Lap(Base):
     sector_1_time = Column(Interval)
     sector_2_time = Column(Interval)
     sector_3_time = Column(Interval)
-    pit_in_time = Column(Interval)
-    pit_out_time = Column(Interval)
+    pit_in_time_ms = Column(Integer)
+    pit_out_time_ms = Column(Integer)
     start_time = Column(Interval, nullable=False)
     start_date = Column(Date, nullable=False)
     is_personal_best = Column(Boolean)
@@ -193,11 +175,21 @@ class Lap(Base):
     is_accurate = Column(Boolean)
     track_status = Column(Integer)
 
-    dta_id = Column(Integer, ForeignKey('dta.id'))
-    dta = relationship('Dta', back_populates='lap')
+    event_session_id = Column(Integer, ForeignKey('event_session.id'))
+    event_session = relationship('EventSession', back_populates='lap')
+
+    driver_id = Column(Integer, ForeignKey('driver.id'))
+    driver = relationship('Driver', back_populates='lap')
+
+    team_id = Column(Integer, ForeignKey('team.id'))
+    team = relationship('Team', back_populates='lap')
     
     tyre_id = Column(Integer, ForeignKey('tyre.id'))
     tyre = relationship('Tyre', back_populates='lap')
+        
+    pos_data = relationship('PosData', back_populates='lap')
+    
+    car_data = relationship('CarData', back_populates='lap')
 
 class CarData(Base):
     __tablename__ = 'car_data'
@@ -217,8 +209,8 @@ class CarData(Base):
     distance_driver_ahead = Column(Float)
     track_status = Column(Integer)
 
-    dta_id = Column(Integer, ForeignKey('dta.id'))
-    dta = relationship('Dta', back_populates='car_data')
+    lap_id = Column(Integer, ForeignKey('lap.id'))
+    lap = relationship('Lap', back_populates='car_data')
 
 class PosData(Base):
     __tablename__ = 'pos_data'
@@ -233,5 +225,5 @@ class PosData(Base):
     is_on_track = Column(Boolean)
     track_status = Column(Integer)
 
-    dta_id = Column(Integer, ForeignKey('dta.id'))
-    dta = relationship('Dta', back_populates='pos_data')
+    lap_id = Column(Integer, ForeignKey('lap.id'))
+    lap = relationship('Lap', back_populates='pos_data')
